@@ -112,7 +112,7 @@ ENDCLASS.
 ```abap
 @Component
 @Qualifier( HttpService )
-zcl_service DEFINFITION.
+CLASS zcl_service DEFINFITION.
 	PUBLIC SECTION.
 	  INTERFACES zif_service.
 ENDCLASS.
