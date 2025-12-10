@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DI2ABAP - Interactive Dependency Graph</title>
+    
+    <!-- Vis.js библиотека -->
+    <script type="text/javascript">
+		%%VIS_SCRIPT%%
+	</script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: rgba(26, 32, 44, 0.95);
+            padding: 20px 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 100px);
+        }
+
+        /* Граф контейнер */
+        .graph-container {
+            flex: 1;
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #dependencyGraph {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Панель управления */
+        .control-panel {
+            width: 300px;
+            background: rgba(26, 32, 44, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group h3 {
+            color: #a0aec0;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-btn {
+            display: block;
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .control-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateX(5px);
+        }
+
+        .control-btn.active {
+            background: rgba(102, 126, 234, 0.5);
+            border-color: #667eea;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .search-box::placeholder {
+            color: #a0aec0;
+        }
+
+        /* Легенда */
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        /* Информационная панель */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 320px;
+            background: rgba(26, 32, 44, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .info-panel.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .node-info h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .node-info p {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #cbd5e0;
+        }
+
+        .annotation-tag {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.2);
+            color: #a3bffa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 2px;
+            border: 1px solid rgba(102, 126, 234, 0.5);
+        }
+
+        /* Статистика */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #a0aec0;
+        }
+
+        /* Подсказки */
+        .tooltip {
+            position: absolute;
+            background: rgba(26, 32, 44, 0.95);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+
+        /* Фильтры */
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .filter-tag {
+            background: rgba(72, 187, 120, 0.2);
+            color: #9ae6b4;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: 1px solid rgba(72, 187, 120, 0.5);
+        }
+
+        .filter-tag.active {
+            background: rgba(72, 187, 120, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>DI2ABAP - Interactive Dependency Graph</h1>
+        <div style="opacity: 0.8; font-size: 0.9rem;">Перетаскивайте узлы для исследования зависимостей</div>
+    </div>
+
+    <div class="container">
+        <div class="graph-container">
+            <div id="dependencyGraph"></div>
+            <div class="info-panel" id="infoPanel"></div>
+        </div>
+
+        <div class="control-panel">
+            <input type="text" class="search-box" placeholder="Поиск класса..." id="searchBox">
+            
+            <div class="control-group">
+                <h3>Типы узлов</h3>
+                <button class="control-btn active" onclick="toggleFilter('core')">
+                    <input type="checkbox" checked style="margin-right: 8px;"> Ядро системы
+                </button>
+                <button class="control-btn active" onclick="toggleFilter('service')">
+                    <input type="checkbox" checked style="margin-right: 8px;"> Сервисы
+                </button>
+                <button class="control-btn active" onclick="toggleFilter('repository')">
+                    <input type="checkbox" checked style="margin-right: 8px;"> Репозитории
+                </button>
+				<button class="control-btn active" onclick="toggleFilter('interceptor')">
+                    <input type="checkbox" checked style="margin-right: 8px;"> Interceptor
+                </button>
+                <button class="control-btn active" onclick="toggleFilter('component')">
+                    <input type="checkbox" checked style="margin-right: 8px;"> Компоненты
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3>Визуализация</h3>
+                <button class="control-btn" onclick="changeLayout('hierarchical')">
+                    📊 Иерархическая
+                </button>
+                <button class="control-btn active" onclick="changeLayout('force')">
+                    ⚡ Силовая модель
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3>Зависимости</h3>
+                <button class="control-btn" onclick="toggleDependencies('all')">
+                    👁️ Показать все
+                </button>
+                <button class="control-btn" onclick="toggleDependencies('inject')">
+                    💉 Только @Inject
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3>Действия</h3>
+                <button class="control-btn" onclick="exportAsImage()">
+                    📸 Экспорт в PNG
+                </button>
+                <button class="control-btn" onclick="exportAsJSON()">
+                    💾 Экспорт в JSON
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3>Легенда</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #667eea;"></div>
+                    <span>Ядро (Core)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #48bb78;"></div>
+                    <span>Сервис (Service)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ed8936;"></div>
+                    <span>Репозиторий (Repository)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4299e1;"></div>
+                    <span>Interceptor</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9f7aea;"></div>
+                    <span>Компонент (Component)</span>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="nodeCount">0</div>
+                    <div class="stat-label">Узлов</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="edgeCount">0</div>
+                    <div class="stat-label">Связей</div>
+                </div>
+                <!-- <div class="stat-item">
+                    <div class="stat-value" id="componentCount">0</div>
+                    <div class="stat-label">@Component</div>
+                </div> -->
+                <div class="stat-item">
+                    <div class="stat-value" id="injectCount">0</div>
+                    <div class="stat-label">@Inject</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Данные для графа DI2ABAP
+        const di2abapData = %%ABAP_GRAPH_DATA%%;
+
+        // Конфигурация графа
+        const options = {
+            nodes: {
+                shape: 'dot',
+                size: 25,
+                font: {
+                    size: 14,
+                    color: '#ffffff',
+                    strokeWidth: 0
+                },
+                borderWidth: 2,
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0,0,0,0.5)',
+                    size: 10,
+                    x: 5,
+                    y: 5
+                }
+            },
+            edges: {
+                width: 2,
+                font: {
+                    size: 12,
+                    color: '#cbd5e0',
+                    strokeWidth: 0,
+                    align: 'middle'
+                },
+                smooth: {
+                    type: 'dynamic'
+                },
+                arrowStrikethrough: false
+            },
+            groups: {
+                core: { color: '#667eea', font: { color: '#ffffff' } },
+                service: { color: '#48bb78', font: { color: '#ffffff' } },
+                repository: { color: '#ed8936', font: { color: '#ffffff' } },
+                interceptor: { color: '#4299e1', font: { color: '#ffffff' } },
+                component: { color: '#9f7aea', font: { color: '#ffffff' } }
+            },
+            physics: {
+                enabled: true,
+                stabilization: {
+                    enabled: true,
+                    iterations: 1000,
+                    updateInterval: 100
+                },
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: {
+                    gravitationalConstant: -50,
+                    centralGravity: 0.01,
+                    springLength: 200,
+                    springConstant: 0.08,
+                    damping: 0.4,
+                    avoidOverlap: 1
+                }
+            },
+            interaction: {
+                dragNodes: true,
+                dragView: true,
+                hover: true,
+                hoverConnectedEdges: true,
+                keyboard: {
+                    enabled: true,
+                    speed: { x: 10, y: 10, zoom: 0.02 },
+                    bindToWindow: false
+                },
+                zoomView: true
+            },
+            layout: {
+                improvedLayout: true
+            }
+        };
+
+        // Инициализация графа
+        let network = null;
+        let container = document.getElementById('dependencyGraph');
+        let data = { nodes: new vis.DataSet(di2abapData.nodes), edges: new vis.DataSet(di2abapData.edges) };
+
+        function initGraph() {
+            network = new vis.Network(container, data, options);
+            
+            // Обновление статистики
+            updateStats();
+            
+            // Обработчики событий
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    showNodeInfo(params.nodes[0]);
+                } else {
+                    document.getElementById('infoPanel').classList.remove('show');
+                }
+            });
+
+            network.on("hoverNode", function(params) {
+                // Подсветка связанных узлов
+                network.selectNodes([params.node]);
+                network.selectEdges(network.getConnectedEdges(params.node));
+            });
+
+            network.on("blurNode", function() {
+                network.unselectAll();
+            });
+
+            network.on("stabilizationIterationsDone", function() {
+                network.setOptions({ physics: false });
+            });
+        }
+
+        // Показать информацию об узле
+        function showNodeInfo(nodeId) {
+            const node = data.nodes.get(nodeId);
+            const infoPanel = document.getElementById('infoPanel');
+            
+            if (!node) return;
+            
+            // Получение связанных зависимостей
+            const connectedEdges = network.getConnectedEdges(nodeId);
+            const dependencies = connectedEdges.map(edgeId => {
+                const edge = data.edges.get(edgeId);
+                const targetNode = data.nodes.get(edge.to === nodeId ? edge.from : edge.to);
+                return {
+                    node: targetNode,
+                    relationship: edge.label,
+                    direction: edge.to === nodeId ? 'from' : 'to'
+                };
+            });
+            
+            // Генерация HTML
+            let html = `
+                <div class="node-info">
+                    <h3>${node.label}</h3>
+                    <p><strong>Тип:</strong> ${node.title}</p>
+                    <p><strong>Зависимости:</strong> ${node.dependencies || 0}</p>
+                    <div style="margin: 10px 0;">
+                        <strong>Аннотации:</strong><br>
+                        ${node?.annotations?.map(ann => 
+                            `<span class="annotation-tag">${ann}</span>`
+                        ).join(' ') || `<span>-</span>`}
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <strong>Связанные узлы:</strong>
+            `;
+            
+            if (dependencies.length > 0) {
+                html += '<ul style="margin-top: 10px; padding-left: 20px;">';
+                dependencies.forEach(dep => {
+                    const directionIcon = dep.direction === 'to' ? '←' : '→';
+                    html += `
+                        <li style="margin-bottom: 5px;">
+                            ${directionIcon} <strong>${dep.node.label}</strong>
+                            <span style="color: #a0aec0; font-size: 0.9em;">(${dep.relationship})</span>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p style="color: #a0aec0;">Нет зависимостей</p>';
+            }
+            
+            html += `
+                    </div>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <button class="control-btn" style="display: inline-block; width: auto; padding: 8px 15px; margin: 0 5px;" 
+                                onclick="highlightNode(${nodeId})">
+                            🔍 Выделить
+                        </button>
+                        <button class="control-btn" style="display: inline-block; width: auto; padding: 8px 15px; margin: 0 5px;" 
+                                onclick="isolateNode(${nodeId})">
+                            🎯 Изолировать
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            infoPanel.innerHTML = html;
+            infoPanel.classList.add('show');
+        }
+
+        // Обновление статистики
+        function updateStats() {
+            const nodes = data.nodes.get();
+            const edges = data.edges.get();
+            
+            document.getElementById('nodeCount').textContent = nodes.length;
+            document.getElementById('edgeCount').textContent = edges.length;
+            //document.getElementById('componentCount').textContent = 
+            //    nodes.filter(n => n.annotations?.includes('@Component')).length;
+            document.getElementById('injectCount').textContent = 
+                edges.filter(e => e.label === 'depends on').length;
+        }
+
+        // Функции управления
+        function toggleFilter(filterType) {
+            const nodes = data.nodes.get();
+            nodes.forEach(node => {
+                if (node.group === filterType) {
+                    node.hidden = !node.hidden;
+                }
+            });
+            data.nodes.update(nodes);
+            updateStats();
+        }
+
+        function changeLayout(layoutType) {
+            switch(layoutType) {
+                case 'hierarchical':
+                    network.setOptions({
+                        layout: { hierarchical: { enabled: true, direction: 'UD' } },
+                        physics: false
+                    });
+                    break;
+                case 'force':
+                    network.setOptions({
+                        layout: { hierarchical: false },
+                        physics: { enabled: true, solver: 'forceAtlas2Based' }
+                    });
+                    break;
+            }
+        }
+
+        function toggleDependencies(type) {
+            const edges = data.edges.get();
+            edges.forEach(edge => {
+                switch(type) {
+                    case 'all':
+                        edge.hidden = false;
+                        break;
+                    case 'inject':
+                        edge.hidden = !(edge.label === 'depends on');
+                        break;
+                }
+            });
+            data.edges.update(edges);
+        }
+
+        function highlightNode(nodeId) {
+            network.selectNodes([nodeId]);
+            network.focus(nodeId, { scale: 1.5, animation: true });
+        }
+
+        function isolateNode(nodeId) {
+            const allNodes = data.nodes.get();
+            const connectedNodes = network.getConnectedNodes(nodeId);
+            connectedNodes.push(nodeId);
+            
+            allNodes.forEach(node => {
+                node.hidden = !connectedNodes.includes(node.id);
+            });
+            
+            data.nodes.update(allNodes);
+            network.fit({ nodes: connectedNodes });
+        }
+
+        function togglePhysics() {
+            const physics = network.getOptions().physics.enabled;
+            network.setOptions({ physics: { enabled: !physics } });
+        }
+
+        function resetView() {
+            network.fit();
+            const allNodes = data.nodes.get();
+            allNodes.forEach(node => node.hidden = false);
+            data.nodes.update(allNodes);
+            
+            const allEdges = data.edges.get();
+            allEdges.forEach(edge => edge.hidden = false);
+            data.edges.update(allEdges);
+            
+            updateStats();
+        }
+
+        function exportAsImage() {
+            network.storePositions();
+            const canvas = document.querySelector('#dependencyGraph canvas');
+            const link = document.createElement('a');
+            link.download = 'di2abap-graph.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function exportAsJSON() {
+            const exportData = {
+                nodes: data.nodes.get(),
+                edges: data.edges.get(),
+                timestamp: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const link = document.createElement('a');
+            link.download = 'di2abap-graph.json';
+            link.href = dataUri;
+            link.click();
+        }
+
+        // Поиск
+        document.getElementById('searchBox').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const nodes = data.nodes.get();
+            
+            nodes.forEach(node => {
+                node.color = node.label.toLowerCase().includes(searchTerm) ? 
+                    { background: '#f56565', border: '#c53030' } : 
+                    options.groups[node.group].color;
+            });
+            
+            data.nodes.update(nodes);
+        });
+
+        // Инициализация при загрузке
+        window.addEventListener('DOMContentLoaded', initGraph);
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+INTERFACE zif_di_stvarv
+  PUBLIC .
+
+
+  METHODS read .
+ENDINTERFACE.
