@@ -270,6 +270,16 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 
 
 * <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~SET_ACTIVE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ACTIVE                      TYPE        ABAP_BOOL
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD zif_di_app_config~set_active.
+    ms_app_config-is_active = iv_active.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~SET_ATTR_INJECT
 * +-------------------------------------------------------------------------------------------------+
 * | [--->] IV_CONSTRUCTOR_PARNAME         TYPE        STRING

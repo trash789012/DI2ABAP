@@ -8,6 +8,9 @@ INTERFACE zif_di_app_config
   METHODS set_proxy_control
     IMPORTING
       !iv_enable TYPE abap_bool .
+  METHODS set_active
+    IMPORTING
+      !iv_active TYPE abap_bool .
   METHODS get_class
     IMPORTING
       !iv_class        TYPE seoclsname
