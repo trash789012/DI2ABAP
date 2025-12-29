@@ -15,14 +15,15 @@ CLASS zcl_di_scanner DEFINITION
       END OF mty_s_dep_controls.
     TYPES:
       BEGIN OF mty_s_parameter_info,
-        attribute_name    TYPE string,
-        parameter_name    TYPE string,
-        parameter_type    TYPE string,
-        class_name        TYPE seoclname,
-        annotations       TYPE zcl_di_annotation_processor=>mty_t_annotations,
-        has_inject        TYPE string,
-        qualifier         TYPE string,
-        override_controls TYPE mty_s_dep_controls,
+        attribute_name           TYPE string,
+        parameter_name           TYPE string,
+        parameter_type           TYPE string,
+        parameter_type_in_constr TYPE string,
+        class_name               TYPE seoclname,
+        annotations              TYPE zcl_di_annotation_processor=>mty_t_annotations,
+        has_inject               TYPE string,
+        qualifier                TYPE string,
+        override_controls        TYPE mty_s_dep_controls,
       END OF mty_s_parameter_info .
     TYPES:
       mty_t_parameter_info TYPE STANDARD TABLE OF mty_s_parameter_info
@@ -423,7 +424,20 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD find_dependencies.
 
-    DATA(lt_attr) = io_class->get_attributes( reference_attributes_only = abap_true ).
+    CONSTANTS:
+      lc_contstructor TYPE seocpdname VALUE 'CONSTRUCTOR'.
+
+    TRY.
+        DATA(lt_attr) = io_class->get_attributes( reference_attributes_only = abap_true ).
+      CATCH cx_component_not_existing.
+        RETURN.
+    ENDTRY.
+
+    TRY.
+        DATA(lt_constructor_attrs) = io_class->get_component_signature( lc_contstructor )-params.
+      CATCH cx_component_not_existing.
+        CLEAR lt_constructor_attrs.
+    ENDTRY.
 
     LOOP AT lt_attr ASSIGNING FIELD-SYMBOL(<ls_attr>).
 
@@ -469,6 +483,15 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
       IF <ls_dep>-parameter_name IS INITIAL.
         "если не указано, то название = имя атрибута
         <ls_dep>-parameter_name = <ls_attr>-cmpname.
+      ENDIF.
+
+      "тип данных, который требует конструктор, для CAST
+      <ls_dep>-parameter_type_in_constr = <ls_attr>-type.
+
+      READ TABLE lt_constructor_attrs ASSIGNING FIELD-SYMBOL(<ls_cparam>)
+        WITH KEY sconame = <ls_dep>-parameter_name.
+      IF sy-subrc = 0.
+        <ls_dep>-parameter_type_in_constr = <ls_cparam>-type.
       ENDIF.
 
       <ls_dep>-parameter_type = <ls_attr>-type.

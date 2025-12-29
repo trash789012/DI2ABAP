@@ -9,7 +9,7 @@ CLASS zcl_di_doc_graph_service DEFINITION
 
     METHODS constructor
       IMPORTING
-        io_repository TYPE REF TO object.
+        io_repository TYPE REF TO zcl_di_doc_repository.
   PROTECTED SECTION.
 
     "@Inject( io_repository )

@@ -8,8 +8,8 @@ CLASS zcl_di_complex_application DEFINITION
 
     METHODS constructor
       IMPORTING
-        io_service TYPE REF TO object
-        io_logger  TYPE REF TO object.
+        io_service TYPE REF TO zif_di_compl_service
+        io_logger  TYPE REF TO zif_di_compl_logger.
     METHODS start .
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -29,8 +29,8 @@ CLASS ZCL_DI_COMPLEX_APPLICATION IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_COMPLEX_APPLICATION->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_SERVICE                     TYPE REF TO OBJECT
-* | [--->] IO_LOGGER                      TYPE REF TO OBJECT
+* | [--->] IO_SERVICE                     TYPE REF TO ZIF_DI_COMPL_SERVICE
+* | [--->] IO_LOGGER                      TYPE REF TO ZIF_DI_COMPL_LOGGER
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_service ?= io_service.

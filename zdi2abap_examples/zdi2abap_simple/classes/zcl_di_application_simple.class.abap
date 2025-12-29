@@ -8,7 +8,7 @@ CLASS zcl_di_application_simple DEFINITION
 
     METHODS constructor
       IMPORTING
-        !io_repository TYPE REF TO object .
+        !io_repository TYPE REF TO zif_di_repository_simple .
     METHODS run .
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -24,7 +24,7 @@ CLASS ZCL_DI_APPLICATION_SIMPLE IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_APPLICATION_SIMPLE->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_REPOSITORY                  TYPE REF TO OBJECT
+* | [--->] IO_REPOSITORY                  TYPE REF TO ZIF_DI_REPOSITORY_SIMPLE
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_repository ?= io_repository.

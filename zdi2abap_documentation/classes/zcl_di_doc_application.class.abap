@@ -8,8 +8,8 @@ CLASS zcl_di_doc_application DEFINITION
 
     METHODS constructor
       IMPORTING
-        !io_graph_service TYPE REF TO object
-        !io_graph_view    TYPE REF TO object.
+        !io_graph_service TYPE REF TO zif_di_doc_graph_service
+        !io_graph_view    TYPE REF TO zif_di_doc_graph_view.
     METHODS run
       IMPORTING
         !it_packages TYPE lxe_tt_dc
@@ -33,8 +33,8 @@ CLASS ZCL_DI_DOC_APPLICATION IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_DOC_APPLICATION->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_GRAPH_SERVICE               TYPE REF TO OBJECT
-* | [--->] IO_GRAPH_VIEW                  TYPE REF TO OBJECT
+* | [--->] IO_GRAPH_SERVICE               TYPE REF TO ZIF_DI_DOC_GRAPH_SERVICE
+* | [--->] IO_GRAPH_VIEW                  TYPE REF TO ZIF_DI_DOC_GRAPH_VIEW
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_graph_service ?= io_graph_service.

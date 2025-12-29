@@ -8,8 +8,8 @@ CLASS zcl_di_repository_scope_demo DEFINITION
 
     METHODS constructor
       IMPORTING
-        io_logger     TYPE REF TO object
-        io_logger_slg TYPE REF TO object.
+        io_logger     TYPE REF TO zif_di_logger_demo
+        io_logger_slg TYPE REF TO zif_di_logger_demo.
     METHODS select .
 
     "@Inject( io_logger )
@@ -31,8 +31,8 @@ CLASS ZCL_DI_REPOSITORY_SCOPE_DEMO IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_REPOSITORY_SCOPE_DEMO->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_LOGGER                      TYPE REF TO OBJECT
-* | [--->] IO_LOGGER_SLG                  TYPE REF TO OBJECT
+* | [--->] IO_LOGGER                      TYPE REF TO ZIF_DI_LOGGER_DEMO
+* | [--->] IO_LOGGER_SLG                  TYPE REF TO ZIF_DI_LOGGER_DEMO
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_logger ?= io_logger.

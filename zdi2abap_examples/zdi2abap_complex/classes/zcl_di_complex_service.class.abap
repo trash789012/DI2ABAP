@@ -10,8 +10,8 @@ CLASS zcl_di_complex_service DEFINITION
 
     METHODS constructor
       IMPORTING
-        io_repository     TYPE REF TO object
-        io_repository_two TYPE REF TO object.
+        io_repository     TYPE REF TO zif_di_compl_repository
+        io_repository_two TYPE REF TO zif_di_compl_repository.
   PROTECTED SECTION.
   PRIVATE SECTION.
 
@@ -29,8 +29,8 @@ CLASS ZCL_DI_COMPLEX_SERVICE IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_COMPLEX_SERVICE->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_REPOSITORY                  TYPE REF TO OBJECT
-* | [--->] IO_REPOSITORY_TWO              TYPE REF TO OBJECT
+* | [--->] IO_REPOSITORY                  TYPE REF TO ZIF_DI_COMPL_REPOSITORY
+* | [--->] IO_REPOSITORY_TWO              TYPE REF TO ZIF_DI_COMPL_REPOSITORY
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_repository     ?= io_repository.

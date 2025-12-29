@@ -8,9 +8,9 @@ CLASS zcl_di_application_scope DEFINITION
 
     METHODS constructor
       IMPORTING
-        !io_repository TYPE REF TO object
-        !io_logger     TYPE REF TO object
-        !io_logger_slg TYPE REF TO object .
+        !io_repository TYPE REF TO zcl_di_repository_scope_demo
+        !io_logger     TYPE REF TO zif_di_logger_demo
+        !io_logger_slg TYPE REF TO zif_di_logger_demo .
     METHODS run .
 
     "@Inject( io_repository )
@@ -33,9 +33,9 @@ CLASS ZCL_DI_APPLICATION_SCOPE IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_APPLICATION_SCOPE->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_REPOSITORY                  TYPE REF TO OBJECT
-* | [--->] IO_LOGGER                      TYPE REF TO OBJECT
-* | [--->] IO_LOGGER_SLG                  TYPE REF TO OBJECT
+* | [--->] IO_REPOSITORY                  TYPE REF TO ZCL_DI_REPOSITORY_SCOPE_DEMO
+* | [--->] IO_LOGGER                      TYPE REF TO ZIF_DI_LOGGER_DEMO
+* | [--->] IO_LOGGER_SLG                  TYPE REF TO ZIF_DI_LOGGER_DEMO
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_repository ?= io_repository.

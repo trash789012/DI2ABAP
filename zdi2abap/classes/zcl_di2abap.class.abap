@@ -95,9 +95,12 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
   METHOD prepare_depends_for_create.
 
     DATA:
-      lt_objlist TYPE TABLE OF REF TO object.
+      lr_depend TYPE REF TO data.
 
-    DATA(lt_class_info) = mo_scanner->get_scan_result( ).
+    FIELD-SYMBOLS:
+      <lo_object> TYPE any.
+
+    DATA(lt_class_info)    = mo_scanner->get_scan_result( ).
     DATA(lt_class_ordered) = mo_dependency_resolver->get_resolve_dependencies( ).
 
     SORT lt_class_info BY class_name.
@@ -122,11 +125,19 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
                                          iv_qualifier = <ls_dep>-qualifier
                                        ).
 
-              INSERT lo_depend_object INTO lt_objlist INDEX 1.
+              CHECK lo_depend_object IS BOUND.
+
+              "Т.к. parameter-table не делает downcast, передадим требуемый тип через REF TO DATA
+              CREATE DATA lr_depend TYPE REF TO (<ls_dep>-parameter_type_in_constr).
+              IF sy-subrc = 0.
+                UNASSIGN <lo_object>.
+                ASSIGN lr_depend->* TO <lo_object>.
+                <lo_object> ?= lo_depend_object.
+              ENDIF.
 
               INSERT VALUE #( name  = <ls_dep>-parameter_name
                               kind  = cl_abap_objectdescr=>exporting
-                              value = REF #( lt_objlist[ 1 ] ) ) INTO TABLE lt_parameters.
+                              value = REF #( <lo_object> ) ) INTO TABLE lt_parameters.
             CATCH zcx_di_error.
           ENDTRY.
         ENDLOOP.
@@ -170,9 +181,6 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
         EXIT.
       ENDIF.
     ENDLOOP.
-
-    FREE:
-      lt_objlist.
 
     "Очищаем параметры для создания
     mo_di_container->refresh_create_parameters( ).

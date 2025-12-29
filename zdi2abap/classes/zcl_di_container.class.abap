@@ -41,10 +41,10 @@ CLASS zcl_di_container DEFINITION
     METHODS prepare_proxy_objects
       RAISING
         zcx_di_error.
-  PRIVATE SECTION.
+private section.
 
-    TYPES:
-      BEGIN OF mty_s_binding,
+  types:
+    BEGIN OF mty_s_binding,
         abstract        TYPE seoclsname,
         concrete        TYPE seoclsname,
         qualifier       TYPE string,
@@ -55,19 +55,19 @@ CLASS zcl_di_container DEFINITION
         proxy           TYPE REF TO object,
         t_create_params TYPE abap_parmbind_tab,
       END OF mty_s_binding .
-    TYPES:
-      mty_t_bindings TYPE HASHED TABLE OF mty_s_binding WITH UNIQUE KEY abstract concrete qualifier .
+  types:
+    mty_t_bindings TYPE HASHED TABLE OF mty_s_binding WITH UNIQUE KEY abstract concrete qualifier .
 
-    DATA mt_bindings TYPE mty_t_bindings .
+  data MT_BINDINGS type MTY_T_BINDINGS .
 
-    METHODS create_instance
-      IMPORTING
-        !iv_classname      TYPE seoclsname
-        !it_parameters     TYPE abap_parmbind_tab OPTIONAL
-      RETURNING
-        VALUE(ro_instance) TYPE REF TO object
-      RAISING
-        zcx_di_error .
+  methods CREATE_INSTANCE
+    importing
+      !IV_CLASSNAME type SEOCLSNAME
+      !IT_PARAMETERS type ABAP_PARMBIND_TAB optional
+    returning
+      value(RO_INSTANCE) type ref to OBJECT
+    raising
+      ZCX_DI_ERROR .
 ENDCLASS.
 
 
@@ -93,7 +93,7 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
     TRY.
         CREATE OBJECT ro_instance TYPE (iv_classname)
           PARAMETER-TABLE lt_parameters.
-      CATCH cx_sy_create_object_error INTO DATA(lx_exc).
+      CATCH cx_root INTO DATA(lx_exc).
         RAISE EXCEPTION TYPE zcx_di_error EXPORTING previous = lx_exc.
     ENDTRY.
   ENDMETHOD.

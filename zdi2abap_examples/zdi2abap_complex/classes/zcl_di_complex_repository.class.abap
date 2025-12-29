@@ -10,7 +10,7 @@ CLASS zcl_di_complex_repository DEFINITION
 
     METHODS constructor
       IMPORTING
-        io_logger TYPE REF TO object.
+        io_logger TYPE REF TO zif_di_compl_logger.
   PROTECTED SECTION.
   PRIVATE SECTION.
 
@@ -26,7 +26,7 @@ CLASS ZCL_DI_COMPLEX_REPOSITORY IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_COMPLEX_REPOSITORY->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_LOGGER                      TYPE REF TO OBJECT
+* | [--->] IO_LOGGER                      TYPE REF TO ZIF_DI_COMPL_LOGGER
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_logger ?= io_logger.

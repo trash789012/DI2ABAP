@@ -8,8 +8,8 @@ CLASS zcl_di_application_conflict DEFINITION
 
     METHODS constructor
       IMPORTING
-        !io_repository_user TYPE REF TO object
-        !io_repository_book TYPE REF TO object.
+        !io_repository_user TYPE REF TO zif_di_repository_conflict
+        !io_repository_book TYPE REF TO zif_di_repository_conflict.
     METHODS run .
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -29,8 +29,8 @@ CLASS ZCL_DI_APPLICATION_CONFLICT IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_APPLICATION_CONFLICT->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_REPOSITORY_USER             TYPE REF TO OBJECT
-* | [--->] IO_REPOSITORY_BOOK             TYPE REF TO OBJECT
+* | [--->] IO_REPOSITORY_USER             TYPE REF TO ZIF_DI_REPOSITORY_CONFLICT
+* | [--->] IO_REPOSITORY_BOOK             TYPE REF TO ZIF_DI_REPOSITORY_CONFLICT
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_repository_user ?= io_repository_user.

@@ -11,7 +11,7 @@ CLASS zcl_di_model_demo DEFINITION
 
     METHODS constructor
       IMPORTING
-        io_stvarv TYPE REF TO object.
+        io_stvarv TYPE REF TO zif_di_stvarv.
   PROTECTED SECTION.
   PRIVATE SECTION.
 
@@ -28,7 +28,7 @@ CLASS ZCL_DI_MODEL_DEMO IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Public Method ZCL_DI_MODEL_DEMO->CONSTRUCTOR
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_STVARV                      TYPE REF TO OBJECT
+* | [--->] IO_STVARV                      TYPE REF TO ZIF_DI_STVARV
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD constructor.
     mo_stvarv ?= io_stvarv.
