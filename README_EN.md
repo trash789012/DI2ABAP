@@ -69,7 +69,7 @@ Resolver - A class for resolving dependency conflicts. Forms the correct sequenc
 5. See examples in the ZDI2ABAP_EXAMPLES package
 
 ## Dependencies
-- Requires SAP_BASIS 750+
+- Requires SAP_BASIS 740+
 
 ## Quick Start
 
