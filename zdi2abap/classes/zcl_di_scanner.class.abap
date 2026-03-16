@@ -6,13 +6,12 @@ CLASS zcl_di_scanner DEFINITION
   PUBLIC SECTION.
 
     TYPES:
-      mty_t_configs TYPE STANDARD TABLE OF REF TO zcl_di_application_config WITH EMPTY KEY.
-
+      mty_t_configs TYPE STANDARD TABLE OF REF TO zcl_di_application_config WITH EMPTY KEY .
     TYPES:
       BEGIN OF mty_s_dep_controls,
         set_attr_inject    TYPE abap_bool,
         set_attr_qualifier TYPE abap_bool,
-      END OF mty_s_dep_controls.
+      END OF mty_s_dep_controls .
     TYPES:
       BEGIN OF mty_s_parameter_info,
         attribute_name           TYPE string,
@@ -28,9 +27,9 @@ CLASS zcl_di_scanner DEFINITION
       END OF mty_s_parameter_info .
     TYPES:
       mty_t_parameter_info TYPE STANDARD TABLE OF mty_s_parameter_info
-                             WITH KEY parameter_name
-                             WITH NON-UNIQUE SORTED KEY k1 COMPONENTS attribute_name parameter_type
-                             WITH NON-UNIQUE SORTED KEY k2 COMPONENTS has_inject.
+                               WITH KEY parameter_name
+                               WITH NON-UNIQUE SORTED KEY k1 COMPONENTS attribute_name parameter_type
+                               WITH NON-UNIQUE SORTED KEY k2 COMPONENTS has_inject .
     TYPES:
       BEGIN OF mty_s_controls,
         set_component_type TYPE abap_bool,
@@ -38,13 +37,13 @@ CLASS zcl_di_scanner DEFINITION
         set_qualifier      TYPE abap_bool,
         set_proxy          TYPE abap_bool,
         set_composite      TYPE abap_bool,
-      END OF mty_s_controls.
+      END OF mty_s_controls .
     TYPES:
       BEGIN OF mty_s_composite_params,
         factory_class       TYPE string,
         factory_method      TYPE string,
         returning_paramname TYPE string,
-      END OF mty_s_composite_params.
+      END OF mty_s_composite_params .
     TYPES:
       BEGIN OF mty_s_class_info,
         class_name            TYPE seoclass-clsname,
@@ -63,10 +62,12 @@ CLASS zcl_di_scanner DEFINITION
       END OF mty_s_class_info .
     TYPES:
       mty_t_class_info TYPE STANDARD TABLE OF mty_s_class_info
-                         WITH KEY class_name
-                         WITH NON-UNIQUE SORTED KEY k1 COMPONENTS absolute_type.
+                           WITH KEY class_name
+                           WITH NON-UNIQUE SORTED KEY k1 COMPONENTS absolute_type .
 
-    METHODS dispose.
+    CONSTANTS mc_core_class TYPE string VALUE `ZCL_DI2ABAP` ##NO_TEXT.
+
+    METHODS dispose .
     METHODS set_scan_packages
       IMPORTING
         !it_package TYPE string_table .
@@ -747,6 +748,12 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
     IF sy-subrc <> 0.
       RETURN.
     ENDIF.
+
+    "Добавим класс ядра
+    APPEND mc_core_class TO lt_class.
+
+    SORT lt_class BY table_line.
+    DELETE ADJACENT DUPLICATES FROM lt_class.
 
     "Поиск классов конфигураторов
     ms_configuration-t_class_configs = search_and_call_config_classes( lt_class ).

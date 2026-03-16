@@ -112,15 +112,13 @@ CLASS ZCL_DI_DEPENDENSY_RESOLVER IMPLEMENTATION.
 
         "Определяем конкретный класс для реализации
         TRY.
-            IF <ls_dep>-attribute_type = 3. "ссылка на класс
-              <ls_dep>-class_name = find_class_by_interface(
-                                      EXPORTING
-                                        iv_interface = <ls_dep>-parameter_type
-                                        iv_qualifier = <ls_dep>-qualifier
-                                      CHANGING
-                                        ct_classes   = ct_classes
-                                    ).
-            ENDIF.
+            <ls_dep>-class_name = find_class_by_interface(
+                                    EXPORTING
+                                      iv_interface = <ls_dep>-parameter_type
+                                      iv_qualifier = <ls_dep>-qualifier
+                                    CHANGING
+                                      ct_classes   = ct_classes
+                                  ).
 
             APPEND VALUE #(
               source_class = <ls_class>-class_name

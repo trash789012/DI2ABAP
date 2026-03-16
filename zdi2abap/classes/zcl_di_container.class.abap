@@ -263,9 +263,15 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
 * | [--->] IO_INSTANCE                    TYPE REF TO OBJECT
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD register_instance.
-    INSERT VALUE #( abstract  = iv_abstract
-                    instance  = io_instance
-                    singleton = abap_true ) INTO TABLE mt_bindings.
+    READ TABLE mt_bindings ASSIGNING FIELD-SYMBOL(<ls_binding>)
+      WITH KEY abstract  = iv_abstract.
+    IF sy-subrc = 0.
+      <ls_binding>-instance  = io_instance.
+    ELSE.
+      INSERT VALUE #( abstract  = iv_abstract
+                      instance  = io_instance
+                      singleton = abap_true ) INTO TABLE mt_bindings.
+    ENDIF.
   ENDMETHOD.
 
 
