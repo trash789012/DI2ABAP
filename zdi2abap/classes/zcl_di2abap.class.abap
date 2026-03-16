@@ -153,6 +153,10 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
         iv_concrete       = <ls_info>-class_name
         it_parameters     = lt_parameters
         iv_is_proxy       = <ls_info>-proxy_enable
+        iv_is_composite   = <ls_info>-composite_object
+        is_composite_info = VALUE #( factory_class  = <ls_info>-composite_params-factory_class
+                                     factory_method = <ls_info>-composite_params-factory_method
+                                     return_pname   = <ls_info>-composite_params-returning_paramname )
         iv_component_type = <ls_info>-component_type
         iv_singleton      = xsdbool( <ls_info>-scope = zif_annotations=>mc_scope-singleton )
       ).
@@ -176,9 +180,14 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
         ENDIF.
       ENDIF.
 
-      IF iv_target_class IS NOT INITIAL AND
-         iv_target_class = <lv_class>.
-        EXIT.
+      IF iv_target_class IS NOT INITIAL.
+        IF iv_target_class = <lv_class>.
+          EXIT.
+        ENDIF.
+        IF <ls_info>-absolute_type = iv_target_class AND
+           iv_qualifier = <ls_info>-qualifier.
+          EXIT.
+        ENDIF.
       ENDIF.
     ENDLOOP.
 
@@ -243,6 +252,7 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
 * +-------------------------------------------------------------------------------------------------+
 * | [--->] IV_CLASSNAME                   TYPE        STRING(optional)
 * | [--->] IV_QUALIFIER                   TYPE        STRING(optional)
+* | [--->] IV_PREPARE_OBJECT_TREE         TYPE        ABAP_BOOL (default ='X')
 * | [<---] EO_INSTANCE                    TYPE        ANY
 * | [!CX!] ZCX_DI_ERROR
 * +--------------------------------------------------------------------------------------</SIGNATURE>
@@ -261,12 +271,15 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
       lv_name = iv_classname.
     ENDIF.
 
-    "Готовим контекст для resolve, по сути проходим по всем зависимостям
-    "и создаем их, и в конце создаем целевой класс
-    prepare_depends_for_create(
-      iv_force_resolve = abap_true "насильно создаем, именно он нам нужен
-      iv_target_class  = CONV #( lv_name )
-    ).
+    IF iv_prepare_object_tree IS NOT INITIAL.
+      "Готовим контекст для resolve, по сути проходим по всем зависимостям
+      "и создаем их, и в конце создаем целевой класс
+      prepare_depends_for_create(
+        iv_force_resolve = abap_true "насильно создаем, именно он нам нужен
+        iv_target_class  = CONV #( lv_name )
+        iv_qualifier     = iv_qualifier
+      ).
+    ENDIF.
 
     "А теперь его резолвим
     DATA(lo_instance) = mo_di_container->resolve( iv_abstract  = CONV #( lv_name )

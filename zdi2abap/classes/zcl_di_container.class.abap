@@ -5,6 +5,13 @@ CLASS zcl_di_container DEFINITION
 
   PUBLIC SECTION.
 
+    TYPES:
+      BEGIN OF mty_s_composite_info,
+        factory_class  TYPE string,
+        factory_method TYPE string,
+        return_pname   TYPE string,
+      END OF mty_s_composite_info .
+
     METHODS dispose .
     " Методы регистрации зависимостей
     METHODS register
@@ -15,6 +22,8 @@ CLASS zcl_di_container DEFINITION
         !iv_component_type TYPE string OPTIONAL
         !iv_singleton      TYPE abap_bool DEFAULT abap_true
         !iv_is_proxy       TYPE abap_bool OPTIONAL
+        !iv_is_composite   TYPE abap_bool OPTIONAL
+        !is_composite_info TYPE mty_s_composite_info OPTIONAL
         !it_parameters     TYPE abap_parmbind_tab OPTIONAL .
     METHODS register_instance
       IMPORTING
@@ -40,21 +49,23 @@ CLASS zcl_di_container DEFINITION
     METHODS refresh_create_parameters .
     METHODS prepare_proxy_objects
       RAISING
-        zcx_di_error.
+        zcx_di_error .
 private section.
 
   types:
     BEGIN OF mty_s_binding,
-        abstract        TYPE seoclsname,
-        concrete        TYPE seoclsname,
-        qualifier       TYPE string,
-        singleton       TYPE abap_bool,
-        is_proxy        TYPE abap_bool,
-        component_type  TYPE string,
-        instance        TYPE REF TO object,
-        proxy           TYPE REF TO object,
-        t_create_params TYPE abap_parmbind_tab,
-      END OF mty_s_binding .
+      abstract         TYPE seoclsname,
+      concrete         TYPE seoclsname,
+      qualifier        TYPE string,
+      singleton        TYPE abap_bool,
+      is_proxy         TYPE abap_bool,
+      is_composite     TYPE abap_bool,
+      s_composite_info TYPE mty_s_composite_info,
+      component_type   TYPE string,
+      instance         TYPE REF TO object,
+      proxy            TYPE REF TO object,
+      t_create_params  TYPE abap_parmbind_tab,
+    END OF mty_s_binding .
   types:
     mty_t_bindings TYPE HASHED TABLE OF mty_s_binding WITH UNIQUE KEY abstract concrete qualifier .
 
@@ -64,6 +75,14 @@ private section.
     importing
       !IV_CLASSNAME type SEOCLSNAME
       !IT_PARAMETERS type ABAP_PARMBIND_TAB optional
+    returning
+      value(RO_INSTANCE) type ref to OBJECT
+    raising
+      ZCX_DI_ERROR .
+  methods CREATE_INSTANCE_BY_COMPOSITE
+    importing
+      !IS_COMPOSITE_INFO type MTY_S_COMPOSITE_INFO
+      !IT_PARAMETERS type ABAP_PARMBIND_TAB
     returning
       value(RO_INSTANCE) type ref to OBJECT
     raising
@@ -96,6 +115,39 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
       CATCH cx_root INTO DATA(lx_exc).
         RAISE EXCEPTION TYPE zcx_di_error EXPORTING previous = lx_exc.
     ENDTRY.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_DI_CONTAINER->CREATE_INSTANCE_BY_COMPOSITE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IS_COMPOSITE_INFO              TYPE        MTY_S_COMPOSITE_INFO
+* | [--->] IT_PARAMETERS                  TYPE        ABAP_PARMBIND_TAB
+* | [<-()] RO_INSTANCE                    TYPE REF TO OBJECT
+* | [!CX!] ZCX_DI_ERROR
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD create_instance_by_composite.
+    DATA:
+      lt_parameters TYPE abap_parmbind_tab.
+
+    IF is_composite_info IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " Если переданы параметры - используем их, иначе пустой список
+    lt_parameters = COND #( WHEN it_parameters IS NOT INITIAL THEN it_parameters ELSE VALUE #( ) ).
+
+    INSERT VALUE #( name  = is_composite_info-return_pname
+                    kind  = cl_abap_objectdescr=>returning
+                    value = REF #( ro_instance ) ) INTO TABLE lt_parameters.
+
+    TRY.
+        CALL METHOD (is_composite_info-factory_class)=>(is_composite_info-factory_method)
+          PARAMETER-TABLE lt_parameters.
+      CATCH cx_root INTO DATA(lx_exc).
+        RAISE EXCEPTION TYPE zcx_di_error EXPORTING previous = lx_exc.
+    ENDTRY.
+
   ENDMETHOD.
 
 
@@ -178,6 +230,8 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
 * | [--->] IV_COMPONENT_TYPE              TYPE        STRING(optional)
 * | [--->] IV_SINGLETON                   TYPE        ABAP_BOOL (default =ABAP_TRUE)
 * | [--->] IV_IS_PROXY                    TYPE        ABAP_BOOL(optional)
+* | [--->] IV_IS_COMPOSITE                TYPE        ABAP_BOOL(optional)
+* | [--->] IS_COMPOSITE_INFO              TYPE        MTY_S_COMPOSITE_INFO(optional)
 * | [--->] IT_PARAMETERS                  TYPE        ABAP_PARMBIND_TAB(optional)
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD register.
@@ -189,13 +243,15 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
     IF sy-subrc = 0.
       <ls_bind>-t_create_params = it_parameters.
     ELSE.
-      INSERT VALUE #( abstract        = iv_abstract
-                      concrete        = iv_concrete
-                      qualifier       = iv_qualifier
-                      singleton       = iv_singleton
-                      is_proxy        = iv_is_proxy
-                      component_type  = iv_component_type
-                      t_create_params = it_parameters ) INTO TABLE mt_bindings.
+      INSERT VALUE #( abstract         = iv_abstract
+                      concrete         = iv_concrete
+                      qualifier        = iv_qualifier
+                      singleton        = iv_singleton
+                      is_proxy         = iv_is_proxy
+                      is_composite     = iv_is_composite
+                      s_composite_info = is_composite_info
+                      component_type   = iv_component_type
+                      t_create_params  = it_parameters ) INTO TABLE mt_bindings.
     ENDIF.
   ENDMETHOD.
 
@@ -232,6 +288,10 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
     IF iv_qualifier IS SUPPLIED.
       DATA(ls_binding) = VALUE #( mt_bindings[ abstract  = iv_abstract
                                                qualifier = iv_qualifier ] OPTIONAL ).
+      IF ls_binding IS INITIAL.
+        ls_binding = VALUE #( mt_bindings[ concrete  = iv_abstract
+                                           qualifier = iv_qualifier ] OPTIONAL ).
+      ENDIF.
       IF ls_binding IS INITIAL AND iv_qualifier IS NOT INITIAL.
         ls_binding = VALUE #( mt_bindings[ qualifier  = iv_qualifier ] OPTIONAL ).
       ENDIF.
@@ -243,9 +303,18 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
         ls_binding = VALUE #( mt_bindings[ abstract       = iv_abstract
                                            qualifier      = iv_qualifier
                                            component_type = iv_component_type ] OPTIONAL ).
+        IF ls_binding IS INITIAL.
+          ls_binding = VALUE #( mt_bindings[ concrete       = iv_abstract
+                                             qualifier      = iv_qualifier
+                                             component_type = iv_component_type ] OPTIONAL ).
+        ENDIF.
       ELSEIF iv_abstract IS NOT INITIAL.
         ls_binding = VALUE #( mt_bindings[ abstract       = iv_abstract
                                            component_type = iv_component_type ] OPTIONAL ).
+        IF ls_binding IS INITIAL.
+          ls_binding = VALUE #( mt_bindings[ concrete       = iv_abstract
+                                             component_type = iv_component_type ] OPTIONAL ).
+        ENDIF.
       ELSE.
         ls_binding = VALUE #( mt_bindings[ component_type = iv_component_type ] OPTIONAL ).
       ENDIF.
@@ -279,8 +348,16 @@ CLASS ZCL_DI_CONTAINER IMPLEMENTATION.
 *   Intance
 *--------------------------------------------------------------------*
     " Создание нового экземпляра
-    ro_instance = create_instance( iv_classname  = ls_binding-concrete
-                                   it_parameters = ls_binding-t_create_params ).
+    IF ls_binding-is_composite IS INITIAL.
+      ro_instance = create_instance( iv_classname  = ls_binding-concrete
+                                     it_parameters = ls_binding-t_create_params ).
+    ELSE.
+      "Составной объект, через фабрику
+      ro_instance = create_instance_by_composite(
+                      is_composite_info = ls_binding-s_composite_info
+                      it_parameters     = ls_binding-t_create_params
+                    ).
+    ENDIF.
 
     ls_binding-instance = ro_instance.
 

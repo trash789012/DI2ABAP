@@ -7,17 +7,18 @@ INTERFACE zif_di_container
 
   METHODS resolve
     IMPORTING
-      !iv_classname      TYPE string OPTIONAL
-      !iv_qualifier      TYPE string OPTIONAL
+      !iv_classname           TYPE string OPTIONAL
+      !iv_qualifier           TYPE string OPTIONAL
+      !iv_prepare_object_tree TYPE abap_bool DEFAULT 'X'
     EXPORTING
-      VALUE(eo_instance) TYPE any
+      VALUE(eo_instance)      TYPE any
     RAISING
-      zcx_mdg_error .
+      zcx_di_error .
   METHODS create_container
     IMPORTING
       !it_package         TYPE string_table
     RETURNING
       VALUE(ro_container) TYPE REF TO zif_di_container
     RAISING
-      zcx_mdg_error .
+      zcx_di_error .
 ENDINTERFACE.

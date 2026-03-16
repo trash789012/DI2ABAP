@@ -7,28 +7,19 @@ CLASS zcl_di_application_config DEFINITION
 
     INTERFACES zif_di_app_config .
 
-    TYPES:
-      BEGIN OF mty_s_class_configuration,
-        o_meta TYPE REF TO cl_oo_class,
-        info   TYPE zcl_di_scanner=>mty_s_class_info,
-      END OF mty_s_class_configuration .
-    TYPES:
-      BEGIN OF mty_s_proxy_configuration,
-        enable TYPE abap_bool,
-      END OF mty_s_proxy_configuration .
-    TYPES:
-      BEGIN OF mty_s_configurations,
-        is_active TYPE abap_bool,
-        s_proxy   TYPE mty_s_proxy_configuration,
-        t_class   TYPE SORTED TABLE OF mty_s_class_configuration
-                             WITH UNIQUE KEY info-class_name,
-      END OF mty_s_configurations .
+    ALIASES get_config
+      FOR zif_di_app_config~get_config .
+    ALIASES mty_s_class_configuration
+      FOR zif_di_app_config~mty_s_class_configuration .
+    ALIASES mty_s_component_configuration
+      FOR zif_di_app_config~mty_s_component_configuration .
+    ALIASES mty_s_configurations
+      FOR zif_di_app_config~mty_s_configurations .
+    ALIASES mty_s_proxy_configuration
+      FOR zif_di_app_config~mty_s_proxy_configuration .
 
     METHODS constructor .
     METHODS dispose .
-    METHODS get_config
-      RETURNING
-        VALUE(rs_config) TYPE mty_s_configurations .
     METHODS replace_annotation
       IMPORTING
         !iv_name        TYPE string
@@ -38,13 +29,13 @@ CLASS zcl_di_application_config DEFINITION
   PROTECTED SECTION.
   PRIVATE SECTION.
 
-    DATA ms_app_config TYPE mty_s_configurations .
+    DATA ms_app_config TYPE zif_di_app_config=>mty_s_configurations .
     DATA mv_last_class_name TYPE seoclsname .
     DATA ms_last_attribute TYPE vseoattrib .
 
     METHODS lookup_cls
       RETURNING
-        VALUE(rr_class) TYPE REF TO mty_s_class_configuration
+        VALUE(rr_class) TYPE REF TO zif_di_app_config=>mty_s_class_configuration
       RAISING
         zcx_di_error .
     METHODS lookup_attr
@@ -54,10 +45,11 @@ CLASS zcl_di_application_config DEFINITION
         zcx_di_error .
     METHODS lookup_dependensy
       IMPORTING
-        !iv_parameter_name   TYPE string
-        !iv_parameter_type   TYPE vseoattrib-type
+        !iv_parameter_name      TYPE string
+        !iv_parameter_type      TYPE vseoattrib-type
+        !iv_type_in_constructor TYPE string OPTIONAL
       RETURNING
-        VALUE(rr_dependensy) TYPE REF TO zcl_di_scanner=>mty_s_parameter_info
+        VALUE(rr_dependensy)    TYPE REF TO zcl_di_scanner=>mty_s_parameter_info
       RAISING
         zcx_di_error .
 ENDCLASS.
@@ -82,16 +74,6 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD dispose.
     FREE ms_app_config.
-  ENDMETHOD.
-
-
-* <SIGNATURE>---------------------------------------------------------------------------------------+
-* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->GET_CONFIG
-* +-------------------------------------------------------------------------------------------------+
-* | [<-()] RS_CONFIG                      TYPE        MTY_S_CONFIGURATIONS
-* +--------------------------------------------------------------------------------------</SIGNATURE>
-  METHOD get_config.
-    rs_config = ms_app_config.
   ENDMETHOD.
 
 
@@ -122,7 +104,7 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 * <SIGNATURE>---------------------------------------------------------------------------------------+
 * | Instance Private Method ZCL_DI_APPLICATION_CONFIG->LOOKUP_CLS
 * +-------------------------------------------------------------------------------------------------+
-* | [<-()] RR_CLASS                       TYPE REF TO MTY_S_CLASS_CONFIGURATION
+* | [<-()] RR_CLASS                       TYPE REF TO ZIF_DI_APP_CONFIG=>MTY_S_CLASS_CONFIGURATION
 * | [!CX!] ZCX_DI_ERROR
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD lookup_cls.
@@ -145,6 +127,7 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 * +-------------------------------------------------------------------------------------------------+
 * | [--->] IV_PARAMETER_NAME              TYPE        STRING
 * | [--->] IV_PARAMETER_TYPE              TYPE        VSEOATTRIB-TYPE
+* | [--->] IV_TYPE_IN_CONSTRUCTOR         TYPE        STRING(optional)
 * | [<-()] RR_DEPENDENSY                  TYPE REF TO ZCL_DI_SCANNER=>MTY_S_PARAMETER_INFO
 * | [!CX!] ZCX_DI_ERROR
 * +--------------------------------------------------------------------------------------</SIGNATURE>
@@ -161,6 +144,9 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
       rr_dependensy->attribute_name = ms_last_attribute-cmpname.
       rr_dependensy->parameter_name = iv_parameter_name.
       rr_dependensy->parameter_type = iv_parameter_type.
+      IF iv_type_in_constructor IS NOT INITIAL.
+        rr_dependensy->parameter_type_in_constr = iv_type_in_constructor.
+      ENDIF.
     ENDIF.
 
   ENDMETHOD.
@@ -183,6 +169,32 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 
     APPEND VALUE #( name  = iv_name
                     value = iv_value ) TO ct_annotations.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~ADD_ATTRIBUTE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ATTRIBUTE                   TYPE        VSEOATTRIB-CMPNAME
+* | [--->] IV_TYPE                        TYPE        VSEOATTRIB-TYPE
+* | [<-()] RO_CONFIG                      TYPE REF TO ZIF_DI_APP_CONFIG
+* | [!CX!] ZCX_DI_ERROR
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD zif_di_app_config~add_attribute.
+    DATA:
+      lt_return TYPE bapiret2_tt.
+
+    CLEAR:
+      ms_last_attribute.
+
+    DATA(lr_info) = lookup_cls( ).
+
+    ms_last_attribute = VALUE vseoattrib( clsname = mv_last_class_name
+                                          cmpname = iv_attribute
+                                          type    = iv_type ).
+
+    ro_config ?= me.
 
   ENDMETHOD.
 
@@ -237,7 +249,7 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
     READ TABLE ms_app_config-t_class ASSIGNING FIELD-SYMBOL(<ls_class>)
       WITH TABLE KEY info-class_name = iv_class.
     IF sy-subrc = 0.
-      ro_config                    ?= me.
+      ro_config         ?= me.
       mv_last_class_name = iv_class.
       RETURN.
     ENDIF.
@@ -255,6 +267,18 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
     ENDTRY.
 
     ro_config ?= me.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~GET_CONFIG
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] RS_CONFIG                      TYPE        ZIF_DI_APP_CONFIG=>MTY_S_CONFIGURATIONS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD zif_di_app_config~get_config.
+
+    rs_config = ms_app_config.
 
   ENDMETHOD.
 
@@ -283,14 +307,16 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 * | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~SET_ATTR_INJECT
 * +-------------------------------------------------------------------------------------------------+
 * | [--->] IV_CONSTRUCTOR_PARNAME         TYPE        STRING
+* | [--->] IV_TYPE_IN_CONSTRUCTOR         TYPE        STRING(optional)
 * | [<-()] RO_CONFIG                      TYPE REF TO ZIF_DI_APP_CONFIG
 * | [!CX!] ZCX_DI_ERROR
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD zif_di_app_config~set_attr_inject.
 
     DATA(lr_dependensy) = lookup_dependensy(
-                            iv_parameter_name = iv_constructor_parname
-                            iv_parameter_type = ms_last_attribute-type
+                            iv_parameter_name      = iv_constructor_parname
+                            iv_parameter_type      = ms_last_attribute-type
+                            iv_type_in_constructor = iv_type_in_constructor
                           ).
 
     lr_dependensy->has_inject = abap_true.
@@ -374,6 +400,65 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
 
     lr_class_conf->info-override_controls-set_component_type = abap_true.
 
+    ro_config ?= me.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~SET_COMPOSITE_OBJECT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COMPOSITE                   TYPE        ABAP_BOOL (default ='X')
+* | [<-()] RO_CONFIG                      TYPE REF TO ZIF_DI_APP_CONFIG
+* | [!CX!] ZCX_DI_ERROR
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD zif_di_app_config~set_composite_object.
+    DATA:
+      lt_return TYPE bapiret2_tt.
+
+    DATA(lr_class_conf) = lookup_cls( ).
+
+*--------------------------------------------------------------------*
+*   Set
+*--------------------------------------------------------------------*
+    lr_class_conf->info-composite_object                = iv_composite.
+    lr_class_conf->info-override_controls-set_composite = iv_composite.
+
+    ro_config ?= me.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~SET_COMPOSITE_OBJECTS_ENABLE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ENABLE                      TYPE        ABAP_BOOL
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD zif_di_app_config~set_composite_objects_enable.
+    ms_app_config-s_composite_objects-enable = iv_enable.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_DI_APPLICATION_CONFIG->ZIF_DI_APP_CONFIG~SET_COMPOSITE_PARAMS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_METHOD                      TYPE        STRING
+* | [--->] IV_CLASS                       TYPE        STRING
+* | [--->] IV_RETURN_PNAME                TYPE        STRING
+* | [<-()] RO_CONFIG                      TYPE REF TO ZIF_DI_APP_CONFIG
+* | [!CX!] ZCX_DI_ERROR
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD zif_di_app_config~set_composite_params.
+    DATA:
+      lt_return TYPE bapiret2_tt.
+
+    DATA(lr_class_conf) = lookup_cls( ).
+
+**--------------------------------------------------------------------*
+**   Set
+**--------------------------------------------------------------------*
+    lr_class_conf->info-composite_params-factory_method      = iv_method.
+    lr_class_conf->info-composite_params-factory_class       = iv_class.
+    lr_class_conf->info-composite_params-returning_paramname = iv_return_pname.
+*
     ro_config ?= me.
   ENDMETHOD.
 

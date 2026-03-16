@@ -112,13 +112,15 @@ CLASS ZCL_DI_DEPENDENSY_RESOLVER IMPLEMENTATION.
 
         "Определяем конкретный класс для реализации
         TRY.
-            <ls_dep>-class_name = find_class_by_interface(
-                                    EXPORTING
-                                      iv_interface = <ls_dep>-parameter_type
-                                      iv_qualifier = <ls_dep>-qualifier
-                                    CHANGING
-                                      ct_classes   = ct_classes
+            IF <ls_dep>-attribute_type = 3. "ссылка на класс
+              <ls_dep>-class_name = find_class_by_interface(
+                                      EXPORTING
+                                        iv_interface = <ls_dep>-parameter_type
+                                        iv_qualifier = <ls_dep>-qualifier
+                                      CHANGING
+                                        ct_classes   = ct_classes
                                     ).
+            ENDIF.
 
             APPEND VALUE #(
               source_class = <ls_class>-class_name
@@ -257,6 +259,7 @@ CLASS ZCL_DI_DEPENDENSY_RESOLVER IMPLEMENTATION.
   METHOD topological_sort.
 
     DATA:
+      lt_return          TYPE bapiret2_tt,
       lt_no_dependencies TYPE mty_t_class_order,
       lt_sorted_classes  TYPE mty_t_class_order.
 
@@ -338,7 +341,21 @@ CLASS ZCL_DI_DEPENDENSY_RESOLVER IMPLEMENTATION.
 
     "3. Проверка на циклы (если остались ребра - есть цикл)
     IF lt_edges IS NOT INITIAL.
-      RAISE EXCEPTION TYPE zcx_di_error.
+      DATA(lv_between) = VALUE string( ).
+
+      LOOP AT lt_edges ASSIGNING <ls_edge>
+        GROUP BY ( source_class = <ls_edge>-source_class )
+        ASSIGNING FIELD-SYMBOL(<ls_grp>).
+        IF sy-tabix = 1.
+          lv_between = <ls_grp>-source_class.
+        ELSE.
+          lv_between = |{ lv_between } <-> { <ls_grp>-source_class }|.
+        ENDIF.
+      ENDLOOP.
+
+      MESSAGE e013 WITH lv_between INTO DATA(lv_dummy).
+      APPEND zcx_di_error=>sy2bapiret( ) TO lt_return.
+      RAISE EXCEPTION TYPE zcx_di_error EXPORTING mt_errors = lt_return.
     ENDIF.
 
     rt_ordered_classes = lt_sorted_classes.

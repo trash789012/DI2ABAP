@@ -16,6 +16,7 @@ CLASS zcl_di_scanner DEFINITION
     TYPES:
       BEGIN OF mty_s_parameter_info,
         attribute_name           TYPE string,
+        attribute_type           TYPE vseoattrib-typtype,
         parameter_name           TYPE string,
         parameter_type           TYPE string,
         parameter_type_in_constr TYPE string,
@@ -36,7 +37,14 @@ CLASS zcl_di_scanner DEFINITION
         set_scope          TYPE abap_bool,
         set_qualifier      TYPE abap_bool,
         set_proxy          TYPE abap_bool,
+        set_composite      TYPE abap_bool,
       END OF mty_s_controls.
+    TYPES:
+      BEGIN OF mty_s_composite_params,
+        factory_class       TYPE string,
+        factory_method      TYPE string,
+        returning_paramname TYPE string,
+      END OF mty_s_composite_params.
     TYPES:
       BEGIN OF mty_s_class_info,
         class_name            TYPE seoclass-clsname,
@@ -47,6 +55,8 @@ CLASS zcl_di_scanner DEFINITION
         scope                 TYPE string,
         qualifier             TYPE string,
         proxy_enable          TYPE abap_bool,
+        composite_object      TYPE abap_bool,
+        composite_params      TYPE mty_s_composite_params,
         injected_dependencies TYPE mty_t_parameter_info,
         related_dependencies  TYPE mty_t_parameter_info,
         override_controls     TYPE mty_s_controls,
@@ -295,6 +305,10 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
     CONSTANTS:
       lc_method TYPE seocpdname VALUE 'CONSTRUCTOR'.
 
+    IF is_class_info-composite_object IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
     IF is_class_info-injected_dependencies IS INITIAL.
       RETURN.
     ENDIF.
@@ -314,6 +328,7 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
     ENDTRY.
 
     LOOP AT is_class_info-injected_dependencies ASSIGNING FIELD-SYMBOL(<ls_dep>)
+      USING KEY k2
       WHERE has_inject = abap_true.
 
       READ TABLE ls_signature-params TRANSPORTING NO FIELDS
@@ -425,7 +440,7 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
   METHOD find_dependencies.
 
     CONSTANTS:
-      lc_contstructor TYPE seocpdname VALUE 'CONSTRUCTOR'.
+      lc_constructor TYPE seocpdname VALUE 'CONSTRUCTOR'.
 
     TRY.
         DATA(lt_attr) = io_class->get_attributes( reference_attributes_only = abap_true ).
@@ -434,7 +449,7 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
     ENDTRY.
 
     TRY.
-        DATA(lt_constructor_attrs) = io_class->get_component_signature( lc_contstructor )-params.
+        DATA(lt_constructor_attrs) = io_class->get_component_signature( lc_constructor )-params.
       CATCH cx_component_not_existing.
         CLEAR lt_constructor_attrs.
     ENDTRY.
@@ -477,6 +492,7 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
 
       "имя атрибута
       <ls_dep>-attribute_name = <ls_attr>-cmpname.
+      <ls_dep>-attribute_type = <ls_attr>-typtype.
 
       "имя входящего параметра для внедрения через конструктор
       <ls_dep>-parameter_name = zcl_di_annotation_processor=>get_inject_argument( lt_annotations ).
@@ -629,6 +645,11 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
 
       ENDIF.
 
+      IF <ls_cls_config>-info-override_controls-set_composite IS NOT INITIAL.
+        cs_info-composite_object = <ls_cls_config>-info-composite_object.
+        cs_info-composite_params = <ls_cls_config>-info-composite_params.
+      ENDIF.
+
 *--------------------------------------------------------------------*
 *     Зависимости
 *--------------------------------------------------------------------*
@@ -645,8 +666,11 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
         ENDIF.
 
         IF <ls_conf_dep>-override_controls-set_attr_inject IS NOT INITIAL.
-          <ls_dep>-has_inject     = <ls_conf_dep>-has_inject.
-          <ls_dep>-parameter_name = <ls_conf_dep>-parameter_name.
+          <ls_dep>-has_inject               = <ls_conf_dep>-has_inject.
+          <ls_dep>-parameter_name           = <ls_conf_dep>-parameter_name.
+          IF <ls_conf_dep>-parameter_type_in_constr IS NOT INITIAL.
+            <ls_dep>-parameter_type_in_constr = <ls_conf_dep>-parameter_type_in_constr.
+          ENDIF.
 
           <lo_config>->replace_annotation(
             EXPORTING
@@ -822,7 +846,7 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
       rs_class_info-scope = zif_di_container=>mc_default_scope.
     ENDIF.
 
-    "Если есть настройка, то она переопределяет
+    "Если есть настройка, то она переопределяет всё, что указано руками
     override_settings_by_config( CHANGING cs_info = rs_class_info ).
 
     "остались зависимости без @Inject ? Сохраним их
@@ -871,15 +895,61 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
       CHECK lt_interfaces IS NOT INITIAL.
 
       TRY.
+          "закидываем системный класс конфигуратор, через который можно управлять метаданными
           CREATE OBJECT lo_config TYPE (lc_base_conf_class).
         CATCH cx_root.
-          CONTINUE.
+          RETURN.
       ENDTRY.
 
+      "У класса конфигуратора вызываем метод CONFIGURATE
       DATA(lv_meth) = |{ lc_intf_enhance }~{ lc_intf_enhance_meth }|.
       CALL METHOD (<lv_class>)=>(lv_meth)
         EXPORTING
           io_app_config = lo_config.
+
+      DATA(ls_conf) = lo_config->get_config( ).
+      IF ls_conf-s_composite_objects-enable = abap_true.
+        "Если есть составные объекты, надо дополнить метаданные
+        DATA(lt_methods) = lo_class->get_methods(
+                             public_methods_only   = abap_true
+                             instance_methods_only = abap_false
+                           ).
+        DELETE lt_methods WHERE cmpname = lc_intf_enhance_meth.
+
+        LOOP AT lt_methods ASSIGNING FIELD-SYMBOL(<ls_meth>).
+          TRY.
+              DATA(ls_signature) = lo_class->get_component_signature( cpdname = CONV #( <ls_meth>-cmpname ) ).
+            CATCH cx_component_not_existing.
+              CONTINUE.
+          ENDTRY.
+
+          "Тип возвращаемого объекта из метода
+          DATA(ls_return_obj) = VALUE #( ls_signature-params[
+                                                    pardecltyp = 3
+                                                    typtype    = 3
+                                                  ] OPTIONAL ).
+          CHECK ls_return_obj IS NOT INITIAL.
+
+          "передаем класс и метод для создания объекта
+          lo_config->get_class( CONV #( ls_return_obj-type )
+                  )->set_composite_params( iv_method = CONV #( <ls_meth>-cmpname )
+                                           iv_class  = CONV #( <lv_class> )
+                                           iv_return_pname = CONV #( ls_return_obj-sconame ) ).
+
+          "Идем по входящим параметрам и докидываем метаданные по ним в dependency
+          LOOP AT ls_signature-params ASSIGNING FIELD-SYMBOL(<ls_import_param>)
+            WHERE pardecltyp = 0
+              AND typtype    = 3.
+
+            lo_config->get_class( CONV #( ls_return_obj-type )
+                    )->add_attribute( iv_attribute = <ls_import_param>-sconame
+                                      iv_type      = <ls_import_param>-type
+                    )->set_attr_inject( iv_constructor_parname = CONV #( <ls_import_param>-sconame )
+                                        iv_type_in_constructor = CONV #( <ls_import_param>-type ) ).
+          ENDLOOP.
+
+        ENDLOOP.
+      ENDIF.
 
       APPEND INITIAL LINE TO rt_configs ASSIGNING FIELD-SYMBOL(<lo_config>).
       <lo_config> ?= lo_config.
