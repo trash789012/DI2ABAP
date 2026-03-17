@@ -50,43 +50,43 @@ CLASS zcl_di_container DEFINITION
     METHODS prepare_proxy_objects
       RAISING
         zcx_di_error .
-private section.
+  PRIVATE SECTION.
 
-  types:
-    BEGIN OF mty_s_binding,
-      abstract         TYPE seoclsname,
-      concrete         TYPE seoclsname,
-      qualifier        TYPE string,
-      singleton        TYPE abap_bool,
-      is_proxy         TYPE abap_bool,
-      is_composite     TYPE abap_bool,
-      s_composite_info TYPE mty_s_composite_info,
-      component_type   TYPE string,
-      instance         TYPE REF TO object,
-      proxy            TYPE REF TO object,
-      t_create_params  TYPE abap_parmbind_tab,
-    END OF mty_s_binding .
-  types:
-    mty_t_bindings TYPE HASHED TABLE OF mty_s_binding WITH UNIQUE KEY abstract concrete qualifier .
+    TYPES:
+      BEGIN OF mty_s_binding,
+        abstract         TYPE seoclsname,
+        concrete         TYPE seoclsname,
+        qualifier        TYPE string,
+        singleton        TYPE abap_bool,
+        is_proxy         TYPE abap_bool,
+        is_composite     TYPE abap_bool,
+        s_composite_info TYPE mty_s_composite_info,
+        component_type   TYPE string,
+        instance         TYPE REF TO object,
+        proxy            TYPE REF TO object,
+        t_create_params  TYPE abap_parmbind_tab,
+      END OF mty_s_binding .
+    TYPES:
+      mty_t_bindings TYPE HASHED TABLE OF mty_s_binding WITH UNIQUE KEY abstract concrete qualifier .
 
-  data MT_BINDINGS type MTY_T_BINDINGS .
+    DATA mt_bindings TYPE mty_t_bindings .
 
-  methods CREATE_INSTANCE
-    importing
-      !IV_CLASSNAME type SEOCLSNAME
-      !IT_PARAMETERS type ABAP_PARMBIND_TAB optional
-    returning
-      value(RO_INSTANCE) type ref to OBJECT
-    raising
-      ZCX_DI_ERROR .
-  methods CREATE_INSTANCE_BY_COMPOSITE
-    importing
-      !IS_COMPOSITE_INFO type MTY_S_COMPOSITE_INFO
-      !IT_PARAMETERS type ABAP_PARMBIND_TAB
-    returning
-      value(RO_INSTANCE) type ref to OBJECT
-    raising
-      ZCX_DI_ERROR .
+    METHODS create_instance
+      IMPORTING
+        !iv_classname      TYPE seoclsname
+        !it_parameters     TYPE abap_parmbind_tab OPTIONAL
+      RETURNING
+        VALUE(ro_instance) TYPE REF TO object
+      RAISING
+        zcx_di_error .
+    METHODS create_instance_by_composite
+      IMPORTING
+        !is_composite_info TYPE mty_s_composite_info
+        !it_parameters     TYPE abap_parmbind_tab
+      RETURNING
+        VALUE(ro_instance) TYPE REF TO object
+      RAISING
+        zcx_di_error .
 ENDCLASS.
 
 

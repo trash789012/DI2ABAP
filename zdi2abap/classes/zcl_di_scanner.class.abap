@@ -63,7 +63,8 @@ CLASS zcl_di_scanner DEFINITION
     TYPES:
       mty_t_class_info TYPE STANDARD TABLE OF mty_s_class_info
                            WITH KEY class_name
-                           WITH NON-UNIQUE SORTED KEY k1 COMPONENTS absolute_type .
+                           WITH NON-UNIQUE SORTED KEY k1 COMPONENTS absolute_type
+                           WITH NON-UNIQUE SORTED KEY k2 COMPONENTS class_name absolute_type.
 
     CONSTANTS mc_core_class TYPE string VALUE `ZCL_DI2ABAP` ##NO_TEXT.
 
@@ -91,69 +92,69 @@ CLASS zcl_di_scanner DEFINITION
         scan_packages   TYPE string_table,
         t_class_configs TYPE mty_t_configs,
       END OF mty_s_config .
-private section.
+  PRIVATE SECTION.
 
-  data MS_CONFIGURATION type MTY_S_CONFIG .
-  data MT_SCAN_RESULT type MTY_T_CLASS_INFO .
+    DATA ms_configuration TYPE mty_s_config .
+    DATA mt_scan_result TYPE mty_t_class_info .
 
-  methods OVERRIDE_SETTINGS_BY_CONFIG
-    changing
-      value(CS_INFO) type MTY_S_CLASS_INFO .
-  methods SEARCH_AND_CALL_CONFIG_CLASSES
-    importing
-      !IT_CLASSES type POC_CLASS_TAB
-    returning
-      value(RT_CONFIGS) type MTY_T_CONFIGS
-    raising
-      ZCX_DI_ERROR .
-  methods CHECKS_AFTER_SCAN
-    changing
-      !CT_CLASS type MTY_T_CLASS_INFO
-    raising
-      ZCX_DI_ERROR .
-  methods SCAN_SINGLE_CLASS
-    importing
-      !IV_CLASS_NAME type SEOCLSNAME
-    returning
-      value(RS_CLASS_INFO) type MTY_S_CLASS_INFO
-    raising
-      ZCX_DI_ERROR .
-  methods GET_CLASS_SCR_CODE
-    importing
-      !IV_CLASS_NAME type SEOCLSNAME
-    returning
-      value(RT_SCR_CODE) type STRING_TABLE
-    raising
-      ZCX_DI_ERROR .
-  methods FIND_DEPENDENCIES
-    importing
-      !IT_SCR_CODE type STRING_TABLE
-      !IO_CLASS type ref to CL_OO_OBJECT optional
-    returning
-      value(RT_DEPENDENCIES) type MTY_T_PARAMETER_INFO .
-  methods CHECK_DOUBLES
-    importing
-      !IT_CLASS type MTY_T_CLASS_INFO
-    raising
-      ZCX_DI_ERROR .
-  methods CHECK_SCOPE_VALUE
-    importing
-      !IV_COMPONENT type STRING
-      !IV_CLASS type SEOCLASS-CLSNAME
-      !IV_SCOPE type STRING
-    raising
-      ZCX_DI_ERROR .
-  methods CHECK_CONSTRUCTOR_PARAMS
-    importing
-      !IO_CLASS type ref to CL_OO_CLASS
-      !IS_CLASS_INFO type MTY_S_CLASS_INFO
-    raising
-      ZCX_DI_ERROR .
-  methods MATCH_SUITABLE_TYPE
-    changing
-      !CT_CLASS type MTY_T_CLASS_INFO
-    raising
-      ZCX_DI_ERROR .
+    METHODS override_settings_by_config
+      CHANGING
+        VALUE(cs_info) TYPE mty_s_class_info .
+    METHODS search_and_call_config_classes
+      IMPORTING
+        !it_classes       TYPE poc_class_tab
+      RETURNING
+        VALUE(rt_configs) TYPE mty_t_configs
+      RAISING
+        zcx_di_error .
+    METHODS checks_after_scan
+      CHANGING
+        !ct_class TYPE mty_t_class_info
+      RAISING
+        zcx_di_error .
+    METHODS scan_single_class
+      IMPORTING
+        !iv_class_name       TYPE seoclsname
+      RETURNING
+        VALUE(rs_class_info) TYPE mty_s_class_info
+      RAISING
+        zcx_di_error .
+    METHODS get_class_scr_code
+      IMPORTING
+        !iv_class_name     TYPE seoclsname
+      RETURNING
+        VALUE(rt_scr_code) TYPE string_table
+      RAISING
+        zcx_di_error .
+    METHODS find_dependencies
+      IMPORTING
+        !it_scr_code           TYPE string_table
+        !io_class              TYPE REF TO cl_oo_object OPTIONAL
+      RETURNING
+        VALUE(rt_dependencies) TYPE mty_t_parameter_info .
+    METHODS check_doubles
+      IMPORTING
+        !it_class TYPE mty_t_class_info
+      RAISING
+        zcx_di_error .
+    METHODS check_scope_value
+      IMPORTING
+        !iv_component TYPE string
+        !iv_class     TYPE seoclass-clsname
+        !iv_scope     TYPE string
+      RAISING
+        zcx_di_error .
+    METHODS check_constructor_params
+      IMPORTING
+        !io_class      TYPE REF TO cl_oo_class
+        !is_class_info TYPE mty_s_class_info
+      RAISING
+        zcx_di_error .
+    METHODS match_suitable_type
+      CHANGING
+        !ct_class TYPE mty_t_class_info
+      RAISING
+        zcx_di_error .
 ENDCLASS.
 
 
@@ -177,7 +178,6 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
 
     DATA:
       lt_all_types     TYPE SORTED TABLE OF string WITH UNIQUE KEY table_line,
-*      lt_implements    TYPE STANDARD TABLE OF string WITH EMPTY KEY,
       lt_qualifier_key TYPE SORTED TABLE OF lty_s_qualifier_key
                          WITH UNIQUE KEY absolute_name qualifier,
       lt_return        TYPE bapiret2_tt.
@@ -203,8 +203,8 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
     LOOP AT ct_class ASSIGNING <ls_class>.
       TRY.
           DATA(lo_class) = CAST cl_oo_class( cl_oo_object=>get_instance( <ls_class>-class_name ) ).
-          DATA(lt_interfaces) = lo_class->get_implemented_interfaces( ).
-        CATCH cx_class_not_existent.
+        CATCH cx_class_not_existent
+              cx_sy_move_cast_error.
           CONTINUE.
       ENDTRY.
 
@@ -236,46 +236,9 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
           APPEND LINES OF lx_error->get_messages( ) TO lt_return.
       ENDTRY.
 
-      "Класс не должен имплементировать два запрашиваемых типа (например ZIF_REPO + ZIF_LOGGER)
-*      lt_implements = VALUE #( ).
-
-*      READ TABLE lt_all_types TRANSPORTING NO FIELDS
-*        WITH TABLE KEY table_line = <ls_class>-class_name.
-*      IF sy-subrc = 0.
-*        APPEND <ls_class>-class_name TO lt_implements.
-
-*        <ls_class>-absolute_type = <ls_class>-class_name.
-*      ENDIF.
-
-*      LOOP AT lt_interfaces ASSIGNING FIELD-SYMBOL(<ls_iterface>).
-*        READ TABLE lt_all_types TRANSPORTING NO FIELDS
-*          WITH TABLE KEY table_line = <ls_iterface>-refclsname.
-*        IF sy-subrc = 0.
-*          APPEND <ls_iterface>-refclsname TO lt_implements.
-*
-*          <ls_class>-absolute_type = <ls_iterface>-refclsname.
-*        ENDIF.
-*      ENDLOOP.
-
-*      IF <ls_class>-absolute_type IS INITIAL.
-*        "Не реализует ни один интерфейс, значит класс
-*        <ls_class>-absolute_type = <ls_class>-class_name.
-*      ENDIF.
-
-*      IF lines( lt_implements ) > 1.
-*        CONCATENATE LINES OF lt_implements INTO DATA(lv_impl_all) SEPARATED BY ','.
-*        MESSAGE e000
-*          WITH <ls_class>-class_name
-*               lv_impl_all
-*          INTO lv_dummy.
-*
-*        APPEND zcx_di_error=>sy2bapiret( ) TO lt_return.
-*        CONTINUE.
-*      ELSE.
-        COLLECT VALUE lty_s_qualifier_key( absolute_name = <ls_class>-absolute_type
-                                           qualifier     = <ls_class>-qualifier
-                                           count         = 1 ) INTO lt_qualifier_key.
-*      ENDIF.
+      COLLECT VALUE lty_s_qualifier_key( absolute_name = <ls_class>-absolute_type
+                                         qualifier     = <ls_class>-qualifier
+                                         count         = 1 ) INTO lt_qualifier_key.
     ENDLOOP.
 
     "Не должно быть двух однотипных компонентов с одинаковым qualifier
@@ -589,7 +552,8 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
       TRY.
           DATA(lo_class) = CAST cl_oo_class( cl_oo_object=>get_instance( <ls_class>-class_name ) ).
           DATA(lt_interfaces) = lo_class->get_implemented_interfaces( ).
-        CATCH cx_class_not_existent.
+        CATCH cx_class_not_existent
+              cx_sy_move_cast_error.
           CONTINUE.
       ENDTRY.
 
@@ -663,10 +627,25 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
         WITH TABLE KEY info-class_name = cs_info-class_name.
       IF sy-subrc <> 0.
         READ TABLE ls_config-t_class ASSIGNING <ls_cls_config>
-          WITH KEY info-class_name = cs_info-absolute_type
-                   info-qualifier  = cs_info-qualifier.
+          WITH KEY info-class_name       = cs_info-absolute_type
+                   info-composite_object = abap_true.
+        IF sy-subrc <> 0.
+          READ TABLE ls_config-t_class ASSIGNING <ls_cls_config>
+            WITH KEY info-class_name = cs_info-absolute_type
+                     info-qualifier  = cs_info-qualifier.
+        ENDIF.
       ENDIF.
       CHECK sy-subrc = 0.
+
+      "Инстанцирование по интерфейсу (фабрика)
+      IF <ls_cls_config>-o_meta                               IS BOUND AND
+         <ls_cls_config>-o_meta                               IS INSTANCE OF cl_oo_interface AND
+         <ls_cls_config>-info-composite_object                IS NOT INITIAL AND
+         <ls_cls_config>-info-override_controls-set_composite IS NOT INITIAL.
+
+        cs_info-class_name = cs_info-absolute_type.
+        CLEAR cs_info-qualifier.
+      ENDIF.
 
       "меняем в соответствии с настройкой
 *--------------------------------------------------------------------*
@@ -877,6 +856,11 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
 
     "После перезаписи из настройки нужно снова подобрать типы
     match_suitable_type( CHANGING ct_class = rt_classes ).
+
+    DELETE ADJACENT DUPLICATES FROM rt_classes
+      USING KEY k1
+      COMPARING class_name
+                absolute_type.
 
     "Теперь проверки
     checks_after_scan( CHANGING ct_class = rt_classes ).
