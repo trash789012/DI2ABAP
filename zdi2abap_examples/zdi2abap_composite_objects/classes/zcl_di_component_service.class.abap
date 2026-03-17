@@ -18,7 +18,7 @@ CLASS zcl_di_component_service DEFINITION
     DATA mt_data TYPE STANDARD TABLE OF mara.
 
     "@Inject( io_util )
-    DATA mo_http TYPE REF TO zcl_di_component_http_util.
+    DATA mo_http TYPE REF TO zif_di_component_util.
 ENDCLASS.
 
 

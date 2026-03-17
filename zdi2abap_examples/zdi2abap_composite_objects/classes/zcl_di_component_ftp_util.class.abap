@@ -1,5 +1,6 @@
 "@Component
-CLASS zcl_di_component_http_util DEFINITION
+"@Qualifier( Ftp )
+CLASS zcl_di_component_ftp_util DEFINITION
   PUBLIC
   FINAL
   CREATE PUBLIC .
@@ -13,14 +14,14 @@ ENDCLASS.
 
 
 
-CLASS ZCL_DI_COMPONENT_HTTP_UTIL IMPLEMENTATION.
+CLASS ZCL_DI_COMPONENT_FTP_UTIL IMPLEMENTATION.
 
 
 * <SIGNATURE>---------------------------------------------------------------------------------------+
-* | Instance Public Method ZCL_DI_COMPONENT_HTTP_UTIL->ZIF_DI_COMPONENT_UTIL~RUN
+* | Instance Public Method ZCL_DI_COMPONENT_FTP_UTIL->ZIF_DI_COMPONENT_UTIL~RUN
 * +-------------------------------------------------------------------------------------------------+
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD zif_di_component_util~run.
-    WRITE : / 'Run By Http'.
+    WRITE : / 'Run By Ftp'.
   ENDMETHOD.
 ENDCLASS.

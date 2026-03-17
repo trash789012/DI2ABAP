@@ -257,11 +257,17 @@ CLASS ZCL_DI_APPLICATION_CONFIG IMPLEMENTATION.
     TRY.
         mv_last_class_name = iv_class.
 
-        DATA(lo_meta) = CAST cl_oo_class( cl_oo_object=>get_instance( iv_class ) ).
+        DATA(lo_meta) = cl_oo_object=>get_instance( iv_class ).
 
-        INSERT VALUE #( info       = VALUE #( class_name = iv_class )
-                        o_meta     = lo_meta )
-         INTO TABLE ms_app_config-t_class.
+        IF lo_meta IS INSTANCE OF cl_oo_class.
+          INSERT VALUE #( info       = VALUE #( class_name = iv_class )
+                          o_meta     = lo_meta )
+           INTO TABLE ms_app_config-t_class.
+        ELSEIF lo_meta IS INSTANCE OF cl_oo_interface.
+          INSERT VALUE #( info       = VALUE #( class_name = iv_class )
+                           o_meta     = lo_meta )
+            INTO TABLE ms_app_config-t_class.
+        ENDIF.
       CATCH cx_class_not_existent INTO DATA(lx_error).
         RAISE EXCEPTION TYPE zcx_di_error EXPORTING previous = lx_error.
     ENDTRY.

@@ -14,11 +14,14 @@ CLASS zcl_di_app_component_config DEFINITION
         !io_service   TYPE REF TO zcl_di_component_service
       RETURNING
         VALUE(ro_alv) TYPE REF TO zcl_mdg_view_base .
-    CLASS-METHODS build_http_util
+    CLASS-METHODS build_util
       IMPORTING
-        !io_container  TYPE REF TO zif_di_container
+        !io_container  TYPE REF TO zif_di_container OPTIONAL
+        !io_stvarv     TYPE REF TO zcl_di_component_stvarv
       RETURNING
-        VALUE(ro_util) TYPE REF TO zcl_di_component_http_util .
+        VALUE(ro_util) TYPE REF TO zif_di_component_util
+      RAISING
+        zcx_di_error .
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
@@ -62,17 +65,34 @@ CLASS ZCL_DI_APP_COMPONENT_CONFIG IMPLEMENTATION.
 
 
 * <SIGNATURE>---------------------------------------------------------------------------------------+
-* | Static Public Method ZCL_DI_APP_COMPONENT_CONFIG=>BUILD_HTTP_UTIL
+* | Static Public Method ZCL_DI_APP_COMPONENT_CONFIG=>BUILD_UTIL
 * +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_CONTAINER                   TYPE REF TO ZIF_DI_CONTAINER
-* | [<-()] RO_UTIL                        TYPE REF TO ZCL_DI_COMPONENT_HTTP_UTIL
+* | [--->] IO_CONTAINER                   TYPE REF TO ZIF_DI_CONTAINER(optional)
+* | [--->] IO_STVARV                      TYPE REF TO ZCL_DI_COMPONENT_STVARV
+* | [<-()] RO_UTIL                        TYPE REF TO ZIF_DI_COMPONENT_UTIL
+* | [!CX!] ZCX_DI_ERROR
 * +--------------------------------------------------------------------------------------</SIGNATURE>
-  METHOD build_http_util.
+  METHOD build_util.
     "Еще один из вариантов, это затребовать на вход метода zif_di_container, и тогда из него можно резолвить
     "любой существующий компонент.
     "Но нужно быть очень аккуратным, т.к. компонент может еще и не существовать,
     "поэтому рекоммендуется использовать типизированные входящие параметры вместо контейнера
-    ro_util = NEW #( ).
+
+    "Относительно типа запуска создаем ту или иную реализацию
+    "Подход можно использовать как простую реализацию фабрики
+    IF io_stvarv IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    CASE io_stvarv->get_run_mode( ).
+      WHEN 'HTTP'.
+        ro_util = NEW zcl_di_component_http_util( ).
+      WHEN 'FTP'.
+        ro_util = NEW zcl_di_component_ftp_util( ).
+      WHEN OTHERS.
+        "other if needed
+        RAISE EXCEPTION TYPE zcx_di_error.
+    ENDCASE.
   ENDMETHOD.
 
 
@@ -88,7 +108,7 @@ CLASS ZCL_DI_APP_COMPONENT_CONFIG IMPLEMENTATION.
     "Такие методы используются для создания сложных объектов, например, через билдеры
     io_app_config->set_composite_objects_enable( abap_true ).
 
-    "Так как мы добавляем внешний объект (создаем через метод), нужно аннотировать класс,
+    "Так как мы добавляем объект (создаем через метод), нужно аннотировать его,
     "хотя бы базово (указать тип компонента и скоуп)
     "плюс указать, что компонент создается через метод (BUILD_ALV) через set_composite_object
     io_app_config->get_class( 'ZCL_MDG_VIEW_BASE'
@@ -96,9 +116,16 @@ CLASS ZCL_DI_APP_COMPONENT_CONFIG IMPLEMENTATION.
                 )->set_scope( zif_di_container=>mc_default_scope
                 )->set_composite_object( abap_true ).
 
-	"если уже есть аннотация @Component, достаточно указать, что компонент создается через метод (build_http_util)
-    io_app_config->get_class( 'ZCL_DI_COMPONENT_HTTP_UTIL'
-                )->set_composite_object( abap_true ).
+
+    "Это вариант абстракции, когда нужно в зависимости от окружения вернуть нужный тип
+    "Настраиваем на интерфейс ZIF_DI_COMPONENT_UTIL метод текущего
+    "класса ZCL_DI_APP_COMPONENT_CONFIG=>BUILD_UTIL
+    "А внутри определяем, конкретную реализацию.
+
+    "Чтобы при резолве фрэймворк отдавал не кэш, ставим scope = prototype
+    io_app_config->get_class( 'ZIF_DI_COMPONENT_UTIL'
+                )->set_composite_object( abap_true
+                )->set_scope( iv_scope = zif_annotations=>mc_scope-prototype ).
 
   ENDMETHOD.
 ENDCLASS.
