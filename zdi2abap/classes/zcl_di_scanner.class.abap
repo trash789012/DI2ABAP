@@ -583,6 +583,14 @@ CLASS ZCL_DI_SCANNER IMPLEMENTATION.
         <ls_class>-absolute_type = <ls_class>-class_name.
       ENDIF.
 
+      "Компонент ядра? тогда прямо из реализованных интерфейсов поставим
+      IF <ls_class>-component_type = zif_annotations=>mc_component-core AND
+         <ls_class>-absolute_type = <ls_class>-class_name.
+
+        <ls_class>-absolute_type = VALUE #( lt_interfaces[ 1 ]-refclsname
+                                              DEFAULT <ls_class>-absolute_type ).
+      ENDIF.
+
       IF lines( lt_implements ) > 1.
         CONCATENATE LINES OF lt_implements INTO DATA(lv_impl_all) SEPARATED BY ','.
         MESSAGE e000

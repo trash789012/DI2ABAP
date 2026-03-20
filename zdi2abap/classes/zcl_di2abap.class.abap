@@ -18,22 +18,21 @@ CLASS zcl_di2abap DEFINITION
         VALUE(ro_instance) TYPE REF TO zcl_di2abap .
     METHODS dispose .
   PROTECTED SECTION.
-  PRIVATE SECTION.
+private section.
 
-    DATA mo_scanner TYPE REF TO zcl_di_scanner .
-    DATA mo_dependency_resolver TYPE REF TO zcl_di_dependensy_resolver .
-    DATA mo_di_container TYPE REF TO zcl_di_container .
-    CLASS-DATA mo_instance TYPE REF TO zcl_di2abap .
+  data MO_SCANNER type ref to ZCL_DI_SCANNER .
+  data MO_DEPENDENCY_RESOLVER type ref to ZCL_DI_DEPENDENSY_RESOLVER .
+  data MO_DI_CONTAINER type ref to ZCL_DI_CONTAINER .
 
-    METHODS prepare_depends_for_create
-      IMPORTING
-        !iv_force_resolve  TYPE abap_bool OPTIONAL
-        !iv_target_class   TYPE seoclass-clsname OPTIONAL
-        !iv_qualifier      TYPE string OPTIONAL
-      RETURNING
-        VALUE(ro_instance) TYPE REF TO object
-      RAISING
-        zcx_di_error .
+  methods PREPARE_DEPENDS_FOR_CREATE
+    importing
+      !IV_FORCE_RESOLVE type ABAP_BOOL optional
+      !IV_TARGET_CLASS type SEOCLASS-CLSNAME optional
+      !IV_QUALIFIER type STRING optional
+    returning
+      value(RO_INSTANCE) type ref to OBJECT
+    raising
+      ZCX_DI_ERROR .
 ENDCLASS.
 
 
@@ -74,11 +73,7 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
 * +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_instance.
 
-    IF mo_instance IS NOT BOUND.
-      mo_instance = NEW #( ).
-    ENDIF.
-
-    ro_instance = mo_instance.
+    ro_instance = NEW #( ).
 
   ENDMETHOD.
 
@@ -244,6 +239,7 @@ CLASS ZCL_DI2ABAP IMPLEMENTATION.
     mo_di_container->prepare_proxy_objects( ).
 
     ro_container ?= me.
+
   ENDMETHOD.
 
 
